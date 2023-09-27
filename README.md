@@ -11,9 +11,10 @@
 CREATE KEYSPACE cass WITH replication = {
 'class': 'SimpleStrategy',
 'replication_factor': 1};
+3. В application.properties настроить порты сервера и свой бд в postgresql и cassandra если у вас другие данные
 
 #Функционал проекта
-1. В application.properties настроить порты сервера и свой бд в postgresql и cassandra если у вас другие данные
-2. URL сваггера http://localhost:8080/swagger-ui/index.html#/ 
+1. URL сваггера http://localhost:8080/swagger-ui/index.html#/ 
 в сваггере весь функционал продокументирован
-3. Некоторые валюты в API не рабочие например KZT/USD, GBP и тд в респонсе будет информация насчет валют.
+2. Некоторые валюты в twelvedata не рабочие например GBP в респонсе будет информация насчет валют.
+
