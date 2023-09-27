@@ -26,7 +26,7 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-core")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0")
     implementation("com.fasterxml.jackson.core:jackson-databind")
-    implementation("org.flywaydb:flyway-core:9.22.2")
+    implementation("org.liquibase:liquibase-core:4.23.2")
     implementation("org.springframework.boot:spring-boot-starter-data-cassandra")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.postgresql:postgresql:42.6.0")

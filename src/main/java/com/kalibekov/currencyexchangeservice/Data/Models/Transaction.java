@@ -34,8 +34,10 @@ public class Transaction {
     @Temporal(TemporalType.TIMESTAMP)
     private Date datetime;
     @Column(columnDefinition = "boolean default false")
-    private Boolean limitExceeded;
+    private boolean limitExceeded;
+
     @ManyToOne
-    @JoinColumn(name = "limits_id")
+    @JoinColumn(name = "limit_id")
     private Limit limit;
+
 }

@@ -10,11 +10,13 @@ import java.util.List;
 import java.util.Optional;
 
 public interface LimitRepository extends JpaRepository<Limit, Long> {
-    @Query("SELECT l FROM Limit l WHERE l.sourceAccount = :sourceAccount AND l.limitCategory = :limitCategory ORDER BY l.limitDatetime DESC")
-    Optional<List<Limit>> findLimitsBySourceAccountAndLimitCategoryOrderByLimitDatetimeDesc(
+    @Query("SELECT l FROM Limit l WHERE l.sourceAccount = :sourceAccount AND l.limitCategory = :limitCategory ORDER BY l.limitDatetime DESC LIMIT 1")
+    Optional<Limit> findLimitsBySourceAccountAndLimitCategoryOrderByLimitDatetimeDesc(
             @Param("sourceAccount") BigDecimal sourceAccount,
             @Param("limitCategory") String limitCategory
     );
+
+
 
 
 }

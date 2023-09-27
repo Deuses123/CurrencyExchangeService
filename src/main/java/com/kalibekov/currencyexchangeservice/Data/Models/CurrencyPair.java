@@ -10,15 +10,13 @@ import org.springframework.data.cassandra.core.mapping.Table;
 import java.util.Date;
 import java.util.UUID;
 
-@Table("exchange_rates")
 @Data
-@AllArgsConstructor
+@Table("currency_pairs")
 @NoArgsConstructor
-public class ExchangeRate {
-
+@AllArgsConstructor
+public class CurrencyPair {
     @Id
     @PrimaryKey
-    private String currencyPair;
-    private Date date;
-    private Double rate;
+    private String pair;
+    private Date createdAt;
 }
