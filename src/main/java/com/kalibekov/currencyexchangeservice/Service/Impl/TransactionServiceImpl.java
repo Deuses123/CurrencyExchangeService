@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -24,6 +25,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 @Service
 @Slf4j
@@ -36,7 +39,8 @@ public class TransactionServiceImpl implements TransactionService {
     private final CurrencyExchangeService currencyExchangeService;
 
     @Override
-    public ResponseEntity<?> createTransaction(TransactionDTO transactionDTO) {
+    @Async
+    public CompletableFuture<ResponseEntity<?>> createTransaction(TransactionDTO transactionDTO) {
         Transaction transaction = transactionMapper.dtoToTransaction(transactionDTO);
         transaction.setDatetime(new Date());
 
@@ -58,6 +62,7 @@ public class TransactionServiceImpl implements TransactionService {
                                 .limitDatetime(new Date())
                                 .build()
                 );
+
                 List<Transaction> transactions;
 
                 if(transactionLimit.isEmpty()){
@@ -70,43 +75,45 @@ public class TransactionServiceImpl implements TransactionService {
                 transaction.setLimit(limit);
                 transactions.add(transaction);
 
-                CurrencyLimit currencyLimit = isLimitExpired(limit, transactions);
+                CurrencyLimit currencyLimit = isLimitExpired(limit, transactions, transaction).get();
 
                 if(currencyLimit.getCurrencyPairNotFound()){
-                    return ResponseEntity.ok("Пара валют " + transaction.getCurrencyShortname() + "/" + limit.getCurrency() + " не найдено в api");
+                    return CompletableFuture.completedFuture(ResponseEntity.ok("Пара валют " + transaction.getCurrencyShortname() + "/" + limit.getCurrency() + " не найдено в api"));
                 }
                 transaction.setLimitExceeded(currencyLimit.getExpired());
                 transactionsRepository.save(transaction);
-                return ResponseEntity.status(HttpStatus.CREATED).body(transaction);
+                return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.CREATED).body(transaction));
             }
             else {
-                return ResponseEntity.ok("Неправильная категория транзакции");
+                return CompletableFuture.completedFuture(ResponseEntity.ok("Неправильная категория транзакции"));
             }
         }
         catch (Exception e) {
             log.info(e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Ошибка при сохранении транзакции");
+            return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Ошибка при сохранении транзакции"));
         }
     }
-    private CurrencyLimit isLimitExpired(Limit limit, List<Transaction> transactions) throws JsonProcessingException {
+    @Async
+    @Override
+    public CompletableFuture<CurrencyLimit> isLimitExpired(Limit limit, List<Transaction> transactions, Transaction transaction) throws JsonProcessingException, ExecutionException, InterruptedException {
         BigDecimal sum = new BigDecimal(0);
         String limitCurrency = limit.getCurrency();
 
         for (Transaction tr : transactions) {
             String transactionCurrency = tr.getCurrencyShortname();
             if(!limitCurrency.equals(transactionCurrency)){
-                ExchangeRate exchangeRate = currencyExchangeService.fetchExchangeRate(limitCurrency+"/"+transactionCurrency);
-                if(exchangeRate.getRate()!=null){
-                    BigDecimal transactionSum = tr.getSum().divide(BigDecimal.valueOf(exchangeRate.getRate()), 2);
+                CompletableFuture<ExchangeRate> exchangeRate = currencyExchangeService.fetchExchangeRate(limitCurrency+"/"+transactionCurrency);
+                if(exchangeRate.get().getRate()!=null){
+                    BigDecimal transactionSum = tr.getSum().divide(BigDecimal.valueOf(exchangeRate.get().getRate()), 2);
                     sum = sum.add(transactionSum);
                 }
                 else {
                     exchangeRate = currencyExchangeService.fetchExchangeRate(transactionCurrency+"/"+limitCurrency);
-                    if(exchangeRate.getRate()==null){
-                        return new CurrencyLimit(true, false);
+                    if(exchangeRate.get().getRate()==null){
+                        return CompletableFuture.completedFuture(new CurrencyLimit(true, false));
                     }
-                    exchangeRate.setRate(1/exchangeRate.getRate());
-                    BigDecimal transactionSum = tr.getSum().divide(BigDecimal.valueOf(exchangeRate.getRate()), 2);
+                    exchangeRate.get().setRate(1/exchangeRate.get().getRate());
+                    BigDecimal transactionSum = tr.getSum().divide(BigDecimal.valueOf(exchangeRate.get().getRate()), 2);
                     sum = sum.add(transactionSum);
                 }
             }
@@ -114,43 +121,45 @@ public class TransactionServiceImpl implements TransactionService {
                 sum = sum.add(tr.getSum());
             }
         }
-        return new CurrencyLimit(false, sum.compareTo(limit.getLimitAmount()) > 0);
+        transaction.setRemainingLimit(limit.getLimitAmount().subtract(sum));
+        return CompletableFuture.completedFuture(new CurrencyLimit(false, sum.compareTo(limit.getLimitAmount()) > 0));
     }
 
     @Override
-    public ResponseEntity<?> getTransactionsExceedingLimit(BigDecimal account) {
+    @Async
+    public CompletableFuture<ResponseEntity<?>> getTransactionsExceedingLimit(BigDecimal account) {
         List<Transaction> transactions = transactionsRepository.findTransactionsByAccountFromAndLimitExceeded(account, true);
         if(transactions.isEmpty()){
-            return ResponseEntity.ok("Транзакции превысивших лимит не найдено");
+            return CompletableFuture.completedFuture(ResponseEntity.ok("Транзакции превысивших лимит не найдено"));
         }
-        return ResponseEntity.ok(transactions);
+        return CompletableFuture.completedFuture(ResponseEntity.ok(transactions));
     }
 
 
-    @Override
     //Основная валюта USD
-    public ResponseEntity<?> createLimit(LimitDTO limitDTO) throws JsonProcessingException {
+    @Override
+    @Async
+    public CompletableFuture<ResponseEntity<?>> createLimit(LimitDTO limitDTO) throws JsonProcessingException, ExecutionException, InterruptedException {
         if(limitDTO.getLimitAmount().equals(BigDecimal.ZERO)){
-            return ResponseEntity.ok("Нулевое значение суммы транзакции не принимается");
+            return CompletableFuture.completedFuture(ResponseEntity.ok("Нулевое значение суммы транзакции не принимается"));
         }
         if(limitDTO.getLimitCategory().equals("products") || limitDTO.getLimitCategory().equals("services")){
             Limit limit = limitMapper.dtoToLimit(limitDTO);
             limit.setLimitDatetime(new Date());
 
             if(!limitDTO.getCurrency().equals("USD")){
-                ExchangeRate exchangeRate = currencyExchangeService.fetchExchangeRate("USD/"+limitDTO.getCurrency());
+                ExchangeRate exchangeRate = currencyExchangeService.fetchExchangeRate("USD/"+limitDTO.getCurrency()).get();
                 if (exchangeRate == null) {
-                    return ResponseEntity.ok("Не правильная валюта");
+                    return CompletableFuture.completedFuture(ResponseEntity.ok("Не правильная валюта"));
                 }
             }
 
             limitRepository.save(limit);
-            return ResponseEntity.status(HttpStatus.CREATED).body("Лимит успешно создан");
+            return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.CREATED).body("Лимит успешно создан"));
         }
         else {
-            return ResponseEntity.ok("Не правильная категория лимта");
+            return CompletableFuture.completedFuture(ResponseEntity.ok("Не правильная категория лимта"));
         }
     }
-
 
 }

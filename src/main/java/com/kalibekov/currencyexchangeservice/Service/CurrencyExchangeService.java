@@ -2,8 +2,10 @@ package com.kalibekov.currencyexchangeservice.Service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.kalibekov.currencyexchangeservice.Data.Models.ExchangeRate;
-import org.springframework.http.ResponseEntity;
+
+import java.util.concurrent.CompletableFuture;
 
 public interface CurrencyExchangeService {
-    ExchangeRate fetchExchangeRate(String currencyPair) throws JsonProcessingException;
+    CompletableFuture<ExchangeRate> fetchExchangeRate(String currencyPair) throws JsonProcessingException;
+    void fetchExchange() throws JsonProcessingException;
 }

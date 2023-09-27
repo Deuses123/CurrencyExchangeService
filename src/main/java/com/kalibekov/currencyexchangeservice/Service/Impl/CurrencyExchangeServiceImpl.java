@@ -11,11 +11,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
@@ -32,6 +34,7 @@ public class CurrencyExchangeServiceImpl implements CurrencyExchangeService {
 
     // Запускать каждый день в полночь @Scheduled(cron = "0 0 * * *")
     @Scheduled(cron = "0 0 */24 * * *")
+    @Async
     public void fetchExchange() throws JsonProcessingException {
         List<CurrencyPair> currencyPairList = currencyPairRepository.findAll();
         for(CurrencyPair currencyPair: currencyPairList){
@@ -44,7 +47,8 @@ public class CurrencyExchangeServiceImpl implements CurrencyExchangeService {
 
     //todo: Метод проверяет с бд валюту и если его там нет то получает его из апи
     @Override
-    public ExchangeRate fetchExchangeRate(String currencyPair) throws JsonProcessingException {
+    @Async
+    public CompletableFuture<ExchangeRate> fetchExchangeRate(String currencyPair) throws JsonProcessingException {
 
         List<ExchangeRate> exchangeRates = exchangeRateRepository
                 .findExchangeRatesByCurrencyPair(currencyPair);
@@ -57,14 +61,16 @@ public class CurrencyExchangeServiceImpl implements CurrencyExchangeService {
 
             return getExchangeRateFromAPI(currencyPair);
         }
-        return exchangeRates.stream()
+        return CompletableFuture.completedFuture(exchangeRates.stream()
                 .max(Comparator.comparing(ExchangeRate::getDate))
-                .orElse(null);
+                .orElse(null));
     }
 
 
-    //todo:Метод получает курс валют с twelvedata и сохраняет в бд
-    public ExchangeRate getExchangeRateFromAPI(String currencyPair) throws JsonProcessingException {
+    //todo: Метод получает курс валют с twelvedata и сохраняет в бд
+
+    @Async
+    protected CompletableFuture<ExchangeRate> getExchangeRateFromAPI(String currencyPair) throws JsonProcessingException {
         if(currencyPair.contains("/") && currencyPair.length() == 7) {
             ExchangeRate exchangeRate = new ExchangeRate();
 
@@ -75,6 +81,7 @@ public class CurrencyExchangeServiceImpl implements CurrencyExchangeService {
             ResponseEntity<String> responseEntity = restTemplate.getForEntity(apiUrl, String.class);
             if (responseEntity.getStatusCode().is2xxSuccessful()) {
                 var jsonResponse = responseEntity.getBody();
+
                 ObjectMapper objectMapper = new ObjectMapper();
 
                 HashMap<String, Object> a = (HashMap<String, Object>) objectMapper.readValue(jsonResponse, HashMap.class);
@@ -90,7 +97,7 @@ public class CurrencyExchangeServiceImpl implements CurrencyExchangeService {
                     log.info(currencyPair+" не нашелся");
                 }
             }
-            return exchangeRate;
+            return CompletableFuture.completedFuture(exchangeRate);
         }
         return null;
     }

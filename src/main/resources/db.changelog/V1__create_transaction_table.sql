@@ -7,6 +7,7 @@ CREATE TABLE transactions (
                               sum NUMERIC(10, 2) NOT NULL,
                               datetime TIMESTAMPTZ,
                               limit_exceeded BOOLEAN DEFAULT FALSE,
+                              remaining_limit NUMERIC(10,2) DEFAULT 0,
                               limit_id BIGINT,
                               FOREIGN KEY (limit_id) REFERENCES limits(id)
 );

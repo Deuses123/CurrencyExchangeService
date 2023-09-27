@@ -35,6 +35,9 @@ public class Transaction {
     private Date datetime;
     @Column(columnDefinition = "boolean default false")
     private boolean limitExceeded;
+    @Column(columnDefinition = "numeric(10,2)", nullable = false)
+    private BigDecimal remainingLimit;
+
 
     @ManyToOne
     @JoinColumn(name = "limit_id")

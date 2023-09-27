@@ -18,5 +18,4 @@ public class TransactionDTO {
     private String currencyShortname;
     private BigDecimal sum;
     private Date datetime;
-
 }
