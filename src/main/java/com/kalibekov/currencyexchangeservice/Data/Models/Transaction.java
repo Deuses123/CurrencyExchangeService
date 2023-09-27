@@ -35,8 +35,6 @@ public class Transaction {
     private Date datetime;
     @Column(columnDefinition = "boolean default false")
     private Boolean limitExceeded;
-    @Column(columnDefinition = "VARCHAR(255)", nullable = false)
-    private String expense_category;
     @ManyToOne
     @JoinColumn(name = "limits_id")
     private Limit limit;

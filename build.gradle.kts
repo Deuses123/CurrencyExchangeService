@@ -22,6 +22,7 @@ repositories {
 }
 
 dependencies {
+    implementation("org.mapstruct:mapstruct:1.5.5.Final")
     implementation("com.fasterxml.jackson.core:jackson-core")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0")
     implementation("com.fasterxml.jackson.core:jackson-databind")
@@ -33,6 +34,7 @@ dependencies {
     compileOnly("org.projectlombok:lombok")
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     annotationProcessor("org.projectlombok:lombok")
+    annotationProcessor("org.mapstruct:mapstruct-processor:1.5.5.Final")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
 

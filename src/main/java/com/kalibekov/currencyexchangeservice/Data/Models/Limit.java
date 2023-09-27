@@ -35,9 +35,4 @@ public class Limit {
     @Temporal(TemporalType.TIMESTAMP)
     private Date limitDatetime;
 
-    @Column(columnDefinition = "timestamptz")
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date endDate;
-
-    private Boolean active;
 }
